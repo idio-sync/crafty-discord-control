@@ -64,7 +64,7 @@ CRAFTY_SSL=true
 CRAFTY_API_KEY=your_api_key
 
 # Server Configuration (format: name:uuid,name2:uuid2)
-MINECRAFT_SERVERS=survival:6db0b699-8e23-40fd-aeec-5adf6f59e1e0
+MINECRAFT_SERVERS=survival:00000000-0000-0000-0000-000000000000
 
 # Auto-shutdown configuration (in minutes)
 AUTO_SHUTDOWN_MINUTES=30
