@@ -58,7 +58,7 @@ DISCORD_GUILD_ID=your_guild_id
 DISCORD_CHANNEL_ID=your_channel_id
 
 # Crafty Controller Configuration
-CRAFTY_HOST=192.168.50.137
+CRAFTY_HOST=crafty_ip
 CRAFTY_PORT=8443
 CRAFTY_SSL=true
 CRAFTY_API_KEY=your_api_key
@@ -90,20 +90,6 @@ python bot.py
    - Use Slash Commands
    - View Channels
 7. Invite the bot to your server
-
-## Environment Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| DISCORD_TOKEN | Your Discord bot token | `NzkyNzE1NDU...` |
-| DISCORD_GUILD_ID | Your Discord server ID | `123456789` |
-| DISCORD_CHANNEL_ID | Channel ID where commands are allowed | `123456789` |
-| CRAFTY_HOST | Crafty Controller host | `192.168.1.100` |
-| CRAFTY_PORT | Crafty Controller port | `8443` |
-| CRAFTY_SSL | Use SSL for Crafty Controller | `true` |
-| CRAFTY_API_KEY | Your Crafty Controller API key | `your-api-key` |
-| MINECRAFT_SERVERS | Server name:UUID pairs | `survival:uuid,creative:uuid2` |
-| AUTO_SHUTDOWN_MINUTES | Minutes before auto-shutdown | `30` |
 
 ## Acknowledgments
 
