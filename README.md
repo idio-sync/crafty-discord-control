@@ -1,6 +1,6 @@
 # Minecraft Server Controller via Discord
 
-A Discord bot that manages Minecraft servers through the Crafty Controller API. Features include starting servers, checking status, and automatic shutdown of inactive servers. This is mainly for small servers hosted at home for a few friends.
+A Discord bot that manages Minecraft servers through the Crafty Controller API. Features include starting servers, checking statuses, and automatic shutdown of inactive servers. This is mainly for small servers hosted at home for a few friends.
 
 ## Features
 
