@@ -24,7 +24,7 @@ A Discord bot that manages Minecraft servers through the Crafty Controller API. 
 
 1. Pull the image:
 ```bash
-docker pull idio-sync000/crafty-discord-control:latest
+docker pull idiosync000/crafty-discord-control:latest
 ```
 
 2. Run the container:
@@ -40,7 +40,7 @@ docker run -d \
   -e CRAFTY_API_KEY=your_key \
   -e MINECRAFT_SERVERS=survival:your-uuid \
   -e AUTO_SHUTDOWN_MINUTES=30 \
-  idio-sync000/crafty-discord-control:latest
+  idiosync000/crafty-discord-control:latest
 ```
 
 ### Option 2: Manual Installation
