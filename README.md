@@ -98,7 +98,7 @@ python bot.py
 | DISCORD_TOKEN | Your Discord bot token | `NzkyNzE1NDU...` |
 | DISCORD_GUILD_ID | Your Discord server ID | `123456789` |
 | DISCORD_CHANNEL_ID | Channel ID where commands are allowed | `123456789` |
-| CRAFTY_HOST | Crafty Controller host | `192.168.50.137` |
+| CRAFTY_HOST | Crafty Controller host | `192.168.1.100` |
 | CRAFTY_PORT | Crafty Controller port | `8443` |
 | CRAFTY_SSL | Use SSL for Crafty Controller | `true` |
 | CRAFTY_API_KEY | Your Crafty Controller API key | `your-api-key` |
