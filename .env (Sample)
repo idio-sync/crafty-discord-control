@@ -1,0 +1,15 @@
+# Discord Bot Configuration
+DISCORD_TOKEN=your_bot_token
+DISCORD_GUILD_ID=your_guild_id
+DISCORD_CHANNEL_ID=channel_id_for_commands
+
+# Crafty Controller Configuration
+CRAFTY_API_KEY=your_crafty_key
+CRAFTY_HOST=crafty_ip
+CRAFTY_PORT=crafty_port
+CRAFTY_SSL=true
+
+# Minecraft Servers Configuration
+# Format: servername:server_uuid,servername2:server_uuid2
+MINECRAFT_SERVERS=servername:server_uuid,servername2:server_uuid2
+AUTO_SHUTDOWN_MINUTES=30
