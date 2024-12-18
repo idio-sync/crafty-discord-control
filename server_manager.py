@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 import logging
 from enum import Enum
 from datetime import datetime, timedelta
-from functools import wraps
 
 # Set up logging
 logging.basicConfig(
@@ -37,7 +36,8 @@ SERVERS = {
 
 # Get configuration from environment variables
 ALLOWED_CHANNEL_ID = int(os.getenv('DISCORD_CHANNEL_ID', 0))
-AUTO_SHUTDOWN_MINUTES = int(os.getenv('AUTO_SHUTDOWN_MINUTES', '30'))
+AUTO_SHUTDOWN_ENABLED = os.getenv('AUTO_SHUTDOWN_ENABLED', 'false').lower() == 'true'
+AUTO_SHUTDOWN_MINUTES = int(os.getenv('AUTO_SHUTDOWN_MINUTES', '30')) if AUTO_SHUTDOWN_ENABLED else 0
 
 def in_allowed_channel():
     async def predicate(ctx):
@@ -59,6 +59,7 @@ class MinecraftServerManager(commands.Cog):
         self.ssl = os.getenv('CRAFTY_SSL', 'true').lower() == 'true'
         self.token = os.getenv('CRAFTY_API_KEY')
         self.last_player_time = {}
+        self.last_player_counts = {}
         
         if not self.token:
             raise ValueError("CRAFTY_API_KEY not found in environment variables")
@@ -68,10 +69,10 @@ class MinecraftServerManager(commands.Cog):
         logger.info(f"SSL enabled: {self.ssl}")
         logger.info(f"Available servers: {list(SERVERS.keys())}")
         logger.info(f"Commands restricted to channel ID: {ALLOWED_CHANNEL_ID}")
-        logger.info(f"Auto-shutdown after {AUTO_SHUTDOWN_MINUTES} minutes of inactivity")
-        
-        # Start the background task
-        self.check_inactive_servers.start()
+        logger.info(f"Auto-shutdown {'enabled' if AUTO_SHUTDOWN_ENABLED else 'disabled'}")
+        if AUTO_SHUTDOWN_ENABLED:
+            logger.info(f"Auto-shutdown timer: {AUTO_SHUTDOWN_MINUTES} minutes")
+            self.check_inactive_servers.start()
 
     async def make_request(self, path: str, method: str = "GET", data: dict = None) -> dict:
         """Make a request to the Crafty API"""
@@ -94,8 +95,12 @@ class MinecraftServerManager(commands.Cog):
                     text = await response.text()
                     logger.debug(f"API Response ({response.status}): {text}")
                     
+                    if not text:
+                        return {}
+                        
                     response_data = json.loads(text)
                     if response_data.get("status") != "ok":
+                        logger.error(f"API Error: {response_data}")
                         raise Exception(response_data.get("error", "Unknown error"))
                     
                     return response_data.get("data", {})
@@ -104,19 +109,28 @@ class MinecraftServerManager(commands.Cog):
             raise
 
     async def server_action(self, server_id: str, action: ServerActions) -> bool:
-        """Execute a server action"""
+        """Execute a server action using the correct endpoint"""
         try:
-            await self.make_request(
+            logger.info(f"Executing action {action.value} for server {server_id}")
+            result = await self.make_request(
                 path=f'/servers/{server_id}/action/{action.value}',
                 method="POST"
             )
+            logger.info(f"Action result: {result}")
             return True
-        except Exception:
+        except Exception as e:
+            logger.error(f"Action {action.value} failed: {str(e)}")
             return False
 
     async def get_server_stats(self, server_id: str) -> dict:
-        """Get server statistics"""
-        return await self.make_request(path=f'/servers/{server_id}/stats')
+        """Get server statistics using the correct endpoint"""
+        try:
+            stats = await self.make_request(path=f'/servers/{server_id}/stats')
+            logger.info(f"Raw server stats for {server_id}: {json.dumps(stats, indent=2)}")
+            return stats
+        except Exception as e:
+            logger.error(f"Error getting server stats: {e}")
+            raise
 
     @commands.slash_command(
         name="start",
@@ -172,49 +186,78 @@ class MinecraftServerManager(commands.Cog):
             logger.error(f"Error checking status: {e}")
             await ctx.respond(f"Error checking server status: {str(e)}")
 
-    @tasks.loop(minutes=5)
+    async def get_server_stats(self, server_id: str) -> dict:
+        """Get server statistics"""
+        try:
+            stats = await self.make_request(path=f'/servers/{server_id}/stats')
+            # Log only essential info
+            logger.debug(f"Server {stats.get('server_id', {}).get('server_name')}: "
+                       f"running={stats.get('running')}, "
+                       f"online={stats.get('online')}")
+            return stats
+        except Exception as e:
+            logger.error(f"Error getting server stats: {e}")
+            raise
+
+    @tasks.loop(minutes=2)
     async def check_inactive_servers(self):
         """Check for inactive servers and shut them down if needed"""
+        if not AUTO_SHUTDOWN_ENABLED:
+            return
+            
         try:
             for server_name, server_id in SERVERS.items():
-                logger.debug(f"Checking activity for server: {server_name}")
                 try:
-                    status = await self.get_server_stats(server_id)
+                    stats = await self.get_server_stats(server_id)
                     
-                    if status.get("running", False):
-                        player_count = status.get("player_count", 0)
+                    if stats.get("running", False):
+                        player_count = int(stats.get("online", 0))
+                        
+                        # Log player count changes
+                        last_count = self.last_player_counts.get(server_id, 0)
+                        if player_count != last_count:
+                            logger.info(f"Server {server_name} player count changed: {last_count} → {player_count}")
+                            if player_count > 0:
+                                players = stats.get("players", "[]")
+                                if players != "False" and players != "[]":
+                                    players = players.strip("[]'").split("', '")
+                                    logger.info(f"Players online: {', '.join(players)}")
+                            self.last_player_counts[server_id] = player_count
                         
                         if player_count == 0:
-                            # If no players, record or update last empty time
                             if server_id not in self.last_player_time:
-                                logger.info(f"Server {server_name} has become empty, starting inactive timer")
+                                logger.info(f"Server {server_name} is empty, starting inactive timer")
                                 self.last_player_time[server_id] = datetime.now()
-                            elif datetime.now() - self.last_player_time[server_id] > timedelta(minutes=AUTO_SHUTDOWN_MINUTES):
-                                logger.info(f"Server {server_name} has been inactive for {AUTO_SHUTDOWN_MINUTES} minutes, initiating shutdown")
+                            else:
+                                idle_time = datetime.now() - self.last_player_time[server_id]
+                                idle_minutes = idle_time.total_seconds() / 60
                                 
-                                # Backup then stop
-                                backup_success = await self.server_action(server_id, ServerActions.BACKUP_SERVER)
-                                if backup_success:
-                                    logger.info(f"Backup completed for {server_name}")
+                                if idle_time > timedelta(minutes=AUTO_SHUTDOWN_MINUTES):
+                                    logger.info(f"Server {server_name} inactive for {AUTO_SHUTDOWN_MINUTES}min, starting shutdown")
                                     
-                                    stop_success = await self.server_action(server_id, ServerActions.STOP_SERVER)
-                                    if stop_success:
-                                        logger.info(f"Successfully stopped {server_name}")
-                                        # Send notification to Discord
-                                        channel = self.bot.get_channel(ALLOWED_CHANNEL_ID)
-                                        if channel:
-                                            await channel.send(
-                                                f"Server {server_name} has been automatically stopped after "
-                                                f"{AUTO_SHUTDOWN_MINUTES} minutes of inactivity. "
-                                                f"Use `/start {server_name}` to start it again."
-                                            )
+                                    # First backup
+                                    backup_success = await self.server_action(server_id, ServerActions.BACKUP_SERVER)
                                     
-                                # Reset the timer
-                                self.last_player_time.pop(server_id, None)
+                                    if backup_success:
+                                        # Then stop
+                                        stop_success = await self.server_action(server_id, ServerActions.STOP_SERVER)
+                                        if stop_success:
+                                            logger.info(f"Successfully stopped {server_name}")
+                                            channel = self.bot.get_channel(ALLOWED_CHANNEL_ID)
+                                            if channel:
+                                                await channel.send(
+                                                    f"Server {server_name} has been automatically stopped after "
+                                                    f"{AUTO_SHUTDOWN_MINUTES} minutes of inactivity. "
+                                                    f"A backup was created before shutdown. "
+                                                    f"Use `/start {server_name}` to start it again."
+                                                )
+                                    
+                                    # Reset the timer
+                                    self.last_player_time.pop(server_id, None)
                         else:
                             # Server has players, reset the timer
                             if server_id in self.last_player_time:
-                                logger.info(f"Players detected on {server_name}, resetting inactive timer")
+                                logger.info(f"Server {server_name} now has players, resetting inactive timer")
                                 self.last_player_time.pop(server_id)
                                 
                 except Exception as e:
