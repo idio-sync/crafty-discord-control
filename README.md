@@ -39,6 +39,7 @@ docker run -d \
   -e CRAFTY_SSL=true \
   -e CRAFTY_API_KEY=your_key \
   -e MINECRAFT_SERVERS=survival:your-uuid \
+  -e AUTO_SHUTDOWN_ENABLED=true \
   -e AUTO_SHUTDOWN_MINUTES=30 \
   idiosync000/crafty-discord-control:latest
 ```
@@ -67,6 +68,7 @@ CRAFTY_API_KEY=your_api_key
 MINECRAFT_SERVERS=survival:00000000-0000-0000-0000-000000000000
 
 # Auto-shutdown configuration (in minutes)
+AUTO_SHUTDOWN_ENABLED=true
 AUTO_SHUTDOWN_MINUTES=30
 ```
 
