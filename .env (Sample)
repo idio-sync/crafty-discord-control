@@ -12,4 +12,5 @@ CRAFTY_SSL=true
 # Minecraft Servers Configuration
 # Format: servername:server_uuid,servername2:server_uuid2
 MINECRAFT_SERVERS=servername:server_uuid,servername2:server_uuid2
+AUTO_SHUTDOWN_ENABLED=true
 AUTO_SHUTDOWN_MINUTES=30
